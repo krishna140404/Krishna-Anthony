@@ -1,0 +1,11 @@
+﻿  ReliableUDP.cpp
+D:\Conestoga College\Term 4\Network Application Development\Task W1\ReliableUDP\Net.h(191,21): warning C4244: '=': conversion from 'SOCKET' to 'int', possible loss of data
+  (compiling source file 'ReliableUDP.cpp')
+  
+D:\Conestoga College\Term 4\Network Application Development\Task W1\ReliableUDP\Net.h(911,29): warning C4244: '/=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file 'ReliableUDP.cpp')
+  
+D:\Conestoga College\Term 4\Network Application Development\Task W1\ReliableUDP\Net.h(912,30): warning C4244: '/=': conversion from 'float' to 'int', possible loss of data
+  (compiling source file 'ReliableUDP.cpp')
+  
+  ReliableUDP.vcxproj -> D:\Conestoga College\Term 4\Network Application Development\Task W1\ReliableUDP\x64\Debug\ReliableUDP.exe
