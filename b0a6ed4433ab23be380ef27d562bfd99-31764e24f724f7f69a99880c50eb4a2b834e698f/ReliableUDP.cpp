@@ -8,6 +8,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#pragma warning(disable: 4996) // required by Visual Studio
 
 #include "Net.h"
 
@@ -114,6 +115,21 @@ private:
 	float penalty_reduction_accumulator;
 };
 
+int fileExists(char* filename)
+{
+
+	char fileFullPath[PacketSize];
+	snprintf(fileFullPath, sizeof(fileFullPath), "./File_Database/%s", filename);
+	FILE* file;
+	if ((file = fopen(fileFullPath, "r")))
+	{
+		fclose(file);
+		return 1;
+	}
+
+	return 0;
+}
+
 // ----------------------------------------------
 
 int main(int argc, char* argv[])
@@ -205,6 +221,7 @@ int main(int argc, char* argv[])
 
 		static int counter = 1;
 
+		/*Send a Message from the server*/
 		while (sendAccumulator > 1.0f / sendRate)
 		{
 			unsigned char packet[PacketSize];
@@ -218,12 +235,13 @@ int main(int argc, char* argv[])
 			sendAccumulator -= 1.0f / sendRate;
 		}
 
+		/*It's going to receive a packet from the client*/
 		while (true)
 		{
 			unsigned char packet[256];
 			/*
 			In the process of receiving the data, and information. Reading byte by byte, the program
-			should start writing all those datas in the default disk to move the data to some place.
+			should start writing all those data in the default disk to move the data to some place.
 			*/
 			int bytes_read = connection.ReceivePacket(packet, sizeof(packet));
 			/*
@@ -233,6 +251,25 @@ int main(int argc, char* argv[])
 			if (bytes_read == 0)
 				break;
 			printf("%s\n", packet);
+
+			/*Instead of printing the packet received from the Client, We are going to change a couple of things
+			to use that packet as a filename and check if We have that file in a folder*/
+
+			int fileConfirmation = fileExists((char*)packet);
+
+			if (fileConfirmation == 1)
+			{
+				sprintf_s((char*)packet, sizeof(packet), "File confirmed <<%d>>\n", counter);
+
+				connection.SendPacket(packet, sizeof(packet));
+			}
+			else
+			{
+				sprintf_s((char*)packet, sizeof(packet), "File is not here <<%d>>\n", counter);
+
+				connection.SendPacket(packet, sizeof(packet));
+			}
+
 		}
 
 		// show packets that were acked this frame
