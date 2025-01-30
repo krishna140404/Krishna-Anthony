@@ -115,11 +115,11 @@ private:
 	float penalty_reduction_accumulator;
 };
 
-int fileExists(char* filename)
+int fileExists(unsigned char* filename)
 {
-
 	char fileFullPath[PacketSize];
-	snprintf(fileFullPath, sizeof(fileFullPath), "./File_Database/%s", filename);
+	snprintf(fileFullPath, sizeof(fileFullPath), "D:\Conestoga College\Term 4\Network Application Development\A01\Assign1\Krishna - Anthony\b0a6ed4433ab23be380ef27d562bfd99 - 31764e24f724f7f69a99880c50eb4a2b834e698f\Files_Database\ % s", filename);
+	
 	FILE* file;
 	if ((file = fopen(fileFullPath, "r")))
 	{
@@ -228,10 +228,9 @@ int main(int argc, char* argv[])
 			memset(packet, 0, sizeof(packet));
 
 
-			sprintf_s((char*)packet, sizeof(packet), "Hello World <<%d>>\n", counter);
+			sprintf_s((char*)packet, sizeof(packet), "binary-sample-01.bin");
 			
 			connection.SendPacket(packet, sizeof(packet));
-			counter++;
 			sendAccumulator -= 1.0f / sendRate;
 		}
 
@@ -250,26 +249,23 @@ int main(int argc, char* argv[])
 			*/
 			if (bytes_read == 0)
 				break;
-			printf("%s\n", packet);
 
-			/*Instead of printing the packet received from the Client, We are going to change a couple of things
-			to use that packet as a filename and check if We have that file in a folder*/
+			int fileFound = fileExists(packet);
 
-			int fileConfirmation = fileExists((char*)packet);
-
-			if (fileConfirmation == 1)
+			if (fileFound == 1)
 			{
-				sprintf_s((char*)packet, sizeof(packet), "File confirmed <<%d>>\n", counter);
-
-				connection.SendPacket(packet, sizeof(packet));
+				printf("%File Exists. \n");
+				printf("%s\n", packet);
 			}
 			else
 			{
-				sprintf_s((char*)packet, sizeof(packet), "File is not here <<%d>>\n", counter);
-
-				connection.SendPacket(packet, sizeof(packet));
+				printf("%File doesn't Exists. \n");
+				printf("%s\n", packet);
 			}
 
+
+			/*Instead of printing the packet received from the Client, We are going to change a couple of things
+			to use that packet as a filename and check if We have that file in a folder*/
 		}
 
 		// show packets that were acked this frame
