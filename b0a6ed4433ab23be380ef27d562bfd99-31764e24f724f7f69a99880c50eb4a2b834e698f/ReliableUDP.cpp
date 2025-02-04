@@ -8,6 +8,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#pragma warning(disable: 4996) // required by Visual Studio
 
 #include "Net.h"
 
@@ -132,7 +133,8 @@ int main(int argc, char* argv[])
 	if (argc >= 2)
 	{
 		int a, b, c, d;
-		#pragma warning(suppress : 4996)
+		string fileNameSend;
+#pragma warning(suppress : 4996)
 		if (sscanf(argv[1], "%d.%d.%d.%d", &a, &b, &c, &d))
 		{
 			mode = Client;
@@ -205,37 +207,58 @@ int main(int argc, char* argv[])
 
 		static int counter = 1;
 
-		while (sendAccumulator > 1.0f / sendRate)
+		/*
+		* This section will be activated only when the Client section is launched
+		*/
+		if (mode == Client)
 		{
+			/*Creating a string variable to receive the filename from the user*/
+			string fileName;
+			printf("Enter the filename that you want to request to the server: ");
+
+			/*Using the getline function I will get immediately the input*/
+			getline(cin, fileName);
+
+			//As you noticed, I had to delete the while loop to avoid continue sending the same request all time
+			//and just sending it once.
+
 			unsigned char packet[PacketSize];
 			memset(packet, 0, sizeof(packet));
+			strncpy((char*)packet, fileName.c_str(), PacketSize - 1);
 
-
-			sprintf_s((char*)packet, sizeof(packet), "Hello World <<%d>>\n", counter);
-			
 			connection.SendPacket(packet, sizeof(packet));
-			counter++;
-			sendAccumulator -= 1.0f / sendRate;
+			printf("File Request sent to the server");
+
+			/*To avoid an infinite loop, this while will be true until the Server send a response to the client*/
+			bool ServerResponse = true;
+			while (ServerResponse)
+			{
+				// update connection
+				connection.Update(DeltaTime);
+
+				unsigned char packet_response[256];
+				/*
+				In the process of receiving the data, and information. Reading byte by byte, the program
+				should start writing all those data in the default disk to move the data to some place.
+				*/
+				int bytes_read = connection.ReceivePacket(packet_response, sizeof(packet_response));
+				/*
+				Immediately the content of the packets is fully written in the disk, that content must be checked.
+				Comparing using another Sample file if all information received is the right to use
+				*/
+				if (bytes_read > 0)
+				{
+					printf("%s\n", packet_response);
+					ServerResponse = false;
+				}
+
+				net::wait(DeltaTime);
+			}
+
+			// show packets that were acked this frame
+
 		}
 
-		while (true)
-		{
-			unsigned char packet[256];
-			/*
-			In the process of receiving the data, and information. Reading byte by byte, the program
-			should start writing all those datas in the default disk to move the data to some place.
-			*/
-			int bytes_read = connection.ReceivePacket(packet, sizeof(packet));
-			/*
-			Immediately the content of the packets is fully written in the disk, that content must be checked.
-			Comparing using another Sample file if all information received is the right to use
-			*/
-			if (bytes_read == 0)
-				break;
-			printf("%s\n", packet);
-		}
-
-		// show packets that were acked this frame
 
 #ifdef SHOW_ACKS
 		unsigned int* acks = NULL;
@@ -249,10 +272,6 @@ int main(int argc, char* argv[])
 			printf("\n");
 		}
 #endif
-
-		// update connection
-
-		connection.Update(DeltaTime);
 
 		// show connection stats
 
@@ -277,10 +296,8 @@ int main(int argc, char* argv[])
 			statsAccumulator -= 0.25f;
 		}
 
-		net::wait(DeltaTime);
+		ShutdownSockets();
+
+		return 0;
 	}
-
-	ShutdownSockets();
-
-	return 0;
 }
