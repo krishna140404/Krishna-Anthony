@@ -9,8 +9,8 @@
 
 class FileTransfer {
 public:
-    static bool readFile(const std::string& filename, std::vector<uint8_t>& buffer);
-    static bool writeFile(const std::string& filename, const std::vector<uint8_t>& buffer);
+    static bool readFile(const char* filename, std::vector<uint8_t>& buffer);
+    static bool writeFile(const char* filename, const std::vector<uint8_t>& buffer);
 };
 
 #endif // FILE_TRANSFER_H
