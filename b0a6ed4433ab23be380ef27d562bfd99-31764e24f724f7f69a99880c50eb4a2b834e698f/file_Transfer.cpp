@@ -1,32 +1,49 @@
-#include "file_transfer.h"
+#include <iostream>
+#include <fstream>
+#include <cstring>
 
-bool FileTransfer::readFile(const char* filename, std::vector<uint8_t>& buffer) {
-    std::ifstream file(filename, std::ios::binary);
-    if (!file) {
-        std::cerr << "Error: Unable to open file " << filename << std::endl;
-        return false;
+class FileTransfer {
+public:
+    static bool readFile(const char* filename, char*& buffer, size_t& fileSize) {
+        std::ifstream file(filename, std::ios::binary);
+        if (!file) {
+            std::cerr << "Error: Unable to open file " << filename << std::endl;
+            return false;
+        }
+        file.seekg(0, std::ios::end);
+        fileSize = file.tellg();
+        file.seekg(0, std::ios::beg);
+        buffer = new char[fileSize];
+        file.read(buffer, fileSize);
+        file.close();
+        return true;
     }
-    file.seekg(0, std::ios::end);
-    std::streamsize fileSize = file.tellg();
-    if (fileSize <= 0) {
-        std::cerr << "Error: Invalid file size for " << filename << std::endl;
-        return false;
+
+    static unsigned int calculateCRC(const char* data, size_t length) {
+        unsigned int crc = 0xFFFFFFFF;
+        for (size_t i = 0; i < length; ++i) {
+            crc ^= static_cast<unsigned int>(data[i]);
+            for (int j = 0; j < 8; ++j) {
+                if (crc & 1)
+                    crc = (crc >> 1) ^ 0xEDB88320;
+                else
+                    crc >>= 1;
+            }
+        }
+        return crc ^ 0xFFFFFFFF;
     }
-    file.seekg(0, std::ios::beg);
+   
+    static void sendFile(const char* filename) {
+        char* fileBuffer;
+        size_t fileSize;
+        if (!readFile(filename, fileBuffer, fileSize)) {
+            return;
+        }
 
-    buffer.resize(static_cast<size_t>(fileSize));
-    file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
+        unsigned int crc = calculateCRC(fileBuffer, fileSize);
+        std::cout << "Sending file: " << filename << " (" << fileSize << " bytes)" << std::endl;
+        std::cout << "CRC Checksum: " << crc << std::endl;
 
-    return file.good();
-}
-
-bool FileTransfer::writeFile(const char* filename, const std::vector<uint8_t>& buffer) {
-    std::ofstream file(filename, std::ios::binary);
-    if (!file) {
-        std::cerr << "Error: Unable to create file " << filename << std::endl;
-        return false;
+        delete[] fileBuffer;
     }
-    file.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
-    return file.good();
-}
-
+};
