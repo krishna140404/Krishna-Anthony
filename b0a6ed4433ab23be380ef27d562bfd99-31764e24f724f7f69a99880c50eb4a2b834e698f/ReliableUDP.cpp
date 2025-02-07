@@ -259,6 +259,43 @@ int main(int argc, char* argv[])
 
 		}
 
+		if (mode == Server)
+		{
+			//	/*Creating a string variable to receive the filename from the user*/
+			//	string fileName;
+			//	printf("Enter the filename that you want to request to the server: ");
+
+			//	/*Using the getline function I will get immediately the input*/
+			//	getline(cin, fileName);
+
+				//As you noticed, I had to delete the while loop to avoid continue sending the same request all time
+				//and just sending it once.
+
+				// update connection
+			connection.Update(DeltaTime);
+
+			unsigned char packet_response[256];
+			/*
+			In the process of receiving the data, and information. Reading byte by byte, the program
+			should start writing all those data in the default disk to move the data to some place.
+			*/
+			int bytes_read = connection.ReceivePacket(packet_response, sizeof(packet_response));
+			/*
+			Immediately the content of the packets is fully written in the disk, that content must be checked.
+			Comparing using another Sample file if all information received is the right to use
+			*/
+			if (bytes_read > 0)
+			{
+				printf("%s\n", packet_response);
+				//ServerResponse = false;
+			}
+
+			net::wait(DeltaTime);
+
+			// show packets that were acked this frame
+		}
+	}
+
 
 #ifdef SHOW_ACKS
 		unsigned int* acks = NULL;
@@ -300,4 +337,3 @@ int main(int argc, char* argv[])
 
 		return 0;
 	}
-}
