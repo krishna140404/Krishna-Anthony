@@ -1,19 +1,19 @@
-#include "performance.h"
+#include <iostream>
+#include <ctime>
 
-void Performance::startTimer() {
-    start = std::chrono::high_resolution_clock::now();
-}
+class Performance {
+public:
+    static double getCurrentTime() {
+        return static_cast<double>(std::time(nullptr));
+    }
 
-void Performance::stopTimer() {
-    end = std::chrono::high_resolution_clock::now();
-}
-
-double Performance::getElapsedTime() {
-    return std::chrono::duration<double>(end - start).count();
-}
-
-double Performance::calculateSpeed(size_t fileSize) {
-    double timeInSeconds = getElapsedTime();
-    double fileSizeInBits = fileSize * 8;
-    return (fileSizeInBits / (timeInSeconds * 1e6)); // Mbps
-}
+    static void measureTransferSpeed(size_t fileSize, double startTime, double endTime) {
+        double duration = endTime - startTime;
+        if (duration <= 0) {
+            std::cerr << "Error: Invalid time duration." << std::endl;
+            return;
+        }
+        double speedMbps = (fileSize * 8.0) / (duration * 1e6);
+        std::cout << "Transfer Speed: " << speedMbps << " Mbps" << std::endl;
+    }
+};
