@@ -3,14 +3,14 @@
 
 #include <iostream>
 #include <fstream>
-#include <vector>
-#include <cstdint>
-#include "protocol.h"
+#include <cstring>
 
 class FileTransfer {
 public:
-    static bool readFile(const char* filename, std::vector<uint8_t>& buffer);
-    static bool writeFile(const char* filename, const std::vector<uint8_t>& buffer);
+    static bool readFile(const char* filename, char*& buffer, size_t& fileSize);
+    static unsigned int calculateCRC(const char* data, size_t length);
+    static void sendFile(const char* filename);
 };
 
 #endif // FILE_TRANSFER_H
+
