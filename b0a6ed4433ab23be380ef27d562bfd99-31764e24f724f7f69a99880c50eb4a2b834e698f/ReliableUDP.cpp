@@ -10,9 +10,7 @@
 #include <vector>
 
 #include "Net.h"
-#include "file_Transfer.h"
-#include "performance.h"
-#include "protocol.h"
+#pragma warning(disable: 4996) // required by Visual Studio
 
 //#define SHOW_ACKS
 
@@ -21,7 +19,7 @@ using namespace net;
 
 const int ServerPort = 30000;
 const int ClientPort = 30001;
-//const int ProtocolId = 0x11223344;
+const int ProtocolId = 0x11223344;
 const float DeltaTime = 1.0f / 30.0f;
 const float SendRate = 1.0f / 30.0f;
 const float TimeOut = 10.0f;
@@ -117,13 +115,12 @@ private:
 	float penalty_reduction_accumulator;
 };
 
-// flow chart defination remains unchanged 
+// ----------------------------------------------
 
 int main(int argc, char* argv[])
 {
 	// parse command line
 
-	
 	enum Mode
 	{
 		Client,
@@ -133,18 +130,11 @@ int main(int argc, char* argv[])
 	Mode mode = Server;
 	Address address;
 
-	/* adding the additional commandline argument here agrv >=3
-	* 
-	* - for the client file path can send via this arguments for sending metadata 
-	* - and for the server the loaction of file to saved for receiving metadat 
-	* - having a default file name for receving the data 
-	* - mode setup in this remain unchanges as it is in argv 2 
-	*
-	*/
 	if (argc >= 2)
 	{
 		int a, b, c, d;
-		if (sscanf_s(argv[1], "%d.%d.%d.%d", &a, &b, &c, &d))
+#pragma warning(suppress : 4996)
+		if (sscanf(argv[1], "%d.%d.%d.%d", &a, &b, &c, &d))
 		{
 			mode = Client;
 			address = Address(a, b, c, d, ServerPort);
@@ -214,165 +204,132 @@ int main(int argc, char* argv[])
 
 		sendAccumulator += DeltaTime;
 
-		while (sendAccumulator > 1.0f / sendRate)
+		static int counter = 1;
+
+		/*
+		* This section will be activated only when the Client section is launched
+		*/
+		if (mode == Client)
 		{
+			/*Creating a string variable to receive the filename from the user*/
+			string fileName;
+			printf("Enter the filename that you want to request to the server: ");
+
+			/*Using the getline function I will get immediately the input*/
+			getline(cin, fileName);
+
+			//As you noticed, I had to delete the while loop to avoid continue sending the same request all time
+			//and just sending it once.
+
 			unsigned char packet[PacketSize];
 			memset(packet, 0, sizeof(packet));
+			strncpy((char*)packet, fileName.c_str(), PacketSize - 1);
+
 			connection.SendPacket(packet, sizeof(packet));
-			sendAccumulator -= 1.0f / sendRate;
+			printf("File Request sent to the server");
+
+			/*To avoid an infinite loop, this while will be true until the Server send a response to the client*/
+			bool ServerResponse = true;
+			while (ServerResponse)
+			{
+				// update connection
+				connection.Update(DeltaTime);
+
+				unsigned char packet_response[256];
+				/*
+				In the process of receiving the data, and information. Reading byte by byte, the program
+				should start writing all those data in the default disk to move the data to some place.
+				*/
+				int bytes_read = connection.ReceivePacket(packet_response, sizeof(packet_response));
+				/*
+				Immediately the content of the packets is fully written in the disk, that content must be checked.
+				Comparing using another Sample file if all information received is the right to use
+				*/
+				if (bytes_read > 0)
+				{
+					printf("%s\n", packet_response);
+					ServerResponse = false;
+				}
+
+				net::wait(DeltaTime);
+			}
+
+			// show packets that were acked this frame
+
 		}
 
+		if (mode == Server)
+		{
+			//	/*Creating a string variable to receive the filename from the user*/
+			//	string fileName;
+			//	printf("Enter the filename that you want to request to the server: ");
 
+			//	/*Using the getline function I will get immediately the input*/
+			//	getline(cin, fileName);
+
+				//As you noticed, I had to delete the while loop to avoid continue sending the same request all time
+				//and just sending it once.
+
+				// update connection
+			connection.Update(DeltaTime);
+
+			unsigned char packet_response[256];
 			/*
-    {
-        //  
-        // 2. Client tasks
-        //  
-        if (mode == Client && connection.IsConnected())
-        {
-            // a) Retrieving the file from disk
-            // Open the specified file, read its contents, and store in memory
-            // Use std::ifstream to read the file in binary mode
-            // Example:
-            // std::ifstream file(filePath, std::ios::binary);
-
-            // b) Sending file metadata
-            // Send information such as file name and size to the server
-            // Create a metadata structure and serialize it into a packet
-            // Example structure:
-            // struct FileMetadata { char fileName[256]; unsigned int fileSize; };
-
-            // c) Breaking the file into pieces to send
-            // Split the file into chunks of `PacketSize` and prepare to send each chunk
-
-            // d) Sending the pieces
-            // Use `connection.SendPacket()` to send each chunk to the server
-            // Example:
-            // connection.SendPacket(dataChunk, chunkSize);
-        }
-		 
-        // 3. Server tasks
-        //  
-        if (mode == Server && connection.IsConnected())
-        {
-            // a) Receiving the file metadata
-            // Receive and parse the metadata to determine the file size and name
-            // Example:
-            // FileMetadata metadata;
-            // connection.ReceivePacket((unsigned char*)&metadata, sizeof(metadata));
-
-            // b) Receiving the file pieces
-            // Accumulate received file chunks into a buffer
-
-            // c) Writing the pieces out to disk
-            // Save the reassembled file to the specified file path or default location
-            // Use std::ofstream in binary mode
-
-            // d) Verifying the file integrity
-            // Compare the received file's size or hash with the metadata to ensure no corruption
-        }
-
-        // Existing flow control and packet processing remains unchanged
+			In the process of receiving the data, and information. Reading byte by byte, the program
+			should start writing all those data in the default disk to move the data to some place.
 			*/
-
-			
-		if (mode == Server && connection.IsConnected()) {
-			Packet receivedPacket;
-			int bytesRead = connection.ReceivePacket(reinterpret_cast<unsigned char*>(&receivedPacket), sizeof(receivedPacket));
-
-			if (bytesRead > 0 && receivedPacket.packetId == ProtocolId) {
-				double startTime = Performance::getCurrentTime();  // Start time when file starts arriving
-
-				std::ofstream outFile("received_file", std::ios::binary);
-				outFile.write(receivedPacket.data, receivedPacket.dataSize);
-				outFile.close();
-
-				double endTime = Performance::getCurrentTime();  // End time after file has been received
-
-				unsigned int crcReceived = FileTransfer::calculateCRC(receivedPacket.data, receivedPacket.dataSize);
-				printf("File Received: %d bytes, CRC: %u\n", receivedPacket.dataSize, crcReceived);
-
-				// Measure transfer speed
-				Performance::measureTransferSpeed(receivedPacket.dataSize, startTime, endTime);
+			int bytes_read = connection.ReceivePacket(packet_response, sizeof(packet_response));
+			/*
+			Immediately the content of the packets is fully written in the disk, that content must be checked.
+			Comparing using another Sample file if all information received is the right to use
+			*/
+			if (bytes_read > 0)
+			{
+				printf("%s\n", packet_response);
+				//ServerResponse = false;
 			}
+
+			net::wait(DeltaTime);
+
+			// show packets that were acked this frame
 		}
+	}
 
-
-		if (mode == Server && connection.IsConnected()) {
-			Packet receivedPacket;
-			int bytesRead = connection.ReceivePacket(reinterpret_cast<unsigned char*>(&receivedPacket), sizeof(receivedPacket));
-
-			if (bytesRead > 0 && receivedPacket.packetId == ProtocolId) {
-				double startTime = Performance::getCurrentTime();  // Start time when file starts arriving
-
-				std::ofstream outFile("received_file", std::ios::binary);
-				outFile.write(receivedPacket.data, receivedPacket.dataSize);
-				outFile.close();
-
-				double endTime = Performance::getCurrentTime();  // End time after file has been received
-
-				unsigned int crcReceived = FileTransfer::calculateCRC(receivedPacket.data, receivedPacket.dataSize);
-				printf("File Received: %d bytes, CRC: %u\n", receivedPacket.dataSize, crcReceived);
-
-				// Measure transfer speed
-				Performance::measureTransferSpeed(receivedPacket.dataSize, startTime, endTime);
-			}
-		}
-
-
-			
-
-
-		/* {
-			unsigned char packet[256];
-			int bytes_read = connection.ReceivePacket(packet, sizeof(packet));
-			if (bytes_read == 0)
-				break;
-		}*/
-
-		// show packets that were acked this frame
 
 #ifdef SHOW_ACKS
-		unsigned int* acks = NULL;
-		int ack_count = 0;
-		connection.GetReliabilitySystem().GetAcks(&acks, ack_count);
-		if (ack_count > 0)
-		{
-			printf("acks: %d", acks[0]);
-			for (int i = 1; i < ack_count; ++i)
-				printf(",%d", acks[i]);
-			printf("\n");
-		}
+	unsigned int* acks = NULL;
+	int ack_count = 0;
+	connection.GetReliabilitySystem().GetAcks(&acks, ack_count);
+	if (ack_count > 0)
+	{
+		printf("acks: %d", acks[0]);
+		for (int i = 1; i < ack_count; ++i)
+			printf(",%d", acks[i]);
+		printf("\n");
+	}
 #endif
 
-		// update connection
+	// show connection stats
 
-		connection.Update(DeltaTime);
+	statsAccumulator += DeltaTime;
 
-		// show connection stats
+	while (statsAccumulator >= 0.25f && connection.IsConnected())
+	{
+		float rtt = connection.GetReliabilitySystem().GetRoundTripTime();
 
-		statsAccumulator += DeltaTime;
+		unsigned int sent_packets = connection.GetReliabilitySystem().GetSentPackets();
+		unsigned int acked_packets = connection.GetReliabilitySystem().GetAckedPackets();
+		unsigned int lost_packets = connection.GetReliabilitySystem().GetLostPackets();
 
-		while (statsAccumulator >= 0.25f && connection.IsConnected())
-		{
-			float rtt = connection.GetReliabilitySystem().GetRoundTripTime();
+		float sent_bandwidth = connection.GetReliabilitySystem().GetSentBandwidth();
+		float acked_bandwidth = connection.GetReliabilitySystem().GetAckedBandwidth();
 
-			unsigned int sent_packets = connection.GetReliabilitySystem().GetSentPackets();
-			unsigned int acked_packets = connection.GetReliabilitySystem().GetAckedPackets();
-			unsigned int lost_packets = connection.GetReliabilitySystem().GetLostPackets();
+		printf("rtt %.1fms, sent %d, acked %d, lost %d (%.1f%%), sent bandwidth = %.1fkbps, acked bandwidth = %.1fkbps\n",
+			rtt * 1000.0f, sent_packets, acked_packets, lost_packets,
+			sent_packets > 0.0f ? (float)lost_packets / (float)sent_packets * 100.0f : 0.0f,
+			sent_bandwidth, acked_bandwidth);
 
-			float sent_bandwidth = connection.GetReliabilitySystem().GetSentBandwidth();
-			float acked_bandwidth = connection.GetReliabilitySystem().GetAckedBandwidth();
-
-			printf("rtt %.1fms, sent %d, acked %d, lost %d (%.1f%%), sent bandwidth = %.1fkbps, acked bandwidth = %.1fkbps\n",
-				rtt * 1000.0f, sent_packets, acked_packets, lost_packets,
-				sent_packets > 0.0f ? (float)lost_packets / (float)sent_packets * 100.0f : 0.0f,
-				sent_bandwidth, acked_bandwidth);
-
-			statsAccumulator -= 0.25f;
-		}
-
-		net::wait(DeltaTime);
+		statsAccumulator -= 0.25f;
 	}
 
 	ShutdownSockets();
