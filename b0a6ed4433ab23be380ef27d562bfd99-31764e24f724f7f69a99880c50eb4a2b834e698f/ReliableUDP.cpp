@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "Net.h"
+#include "file_Transfer.h"
 #pragma warning(disable: 4996) // required by Visual Studio
 
 //#define SHOW_ACKS
@@ -285,8 +286,20 @@ int main(int argc, char* argv[])
 			*/
 			if (bytes_read > 0)
 			{
-				printf("%s\n", packet_response);
-				//ServerResponse = false;
+				string requestedFile(reinterpret_cast<char*>(packet_response));
+				printf("Client requested File: %s\n", requestedFile.c_str());
+				string filePathStored = "./FileStore/";
+
+				requestedFile = filePathStored + requestedFile;
+
+				char* buffer = nullptr;
+				size_t fileSize = 0;
+
+				if (FileTransfer::readFile(requestedFile.c_str(), buffer, fileSize))
+				{
+					printf("File %s read successfully, size: %zu bytes\n", requestedFile.c_str(), fileSize);
+
+				}
 			}
 
 			net::wait(DeltaTime);
