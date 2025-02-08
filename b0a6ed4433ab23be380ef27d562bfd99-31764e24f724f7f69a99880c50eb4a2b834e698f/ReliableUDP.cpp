@@ -10,6 +10,9 @@
 #include <vector>
 
 #include "Net.h"
+#include "file_Transfer.h"
+#include "performance.h"
+#include "protocol.h"
 
 //#define SHOW_ACKS
 
@@ -18,7 +21,7 @@ using namespace net;
 
 const int ServerPort = 30000;
 const int ClientPort = 30001;
-const int ProtocolId = 0x11223344;
+//const int ProtocolId = 0x11223344;
 const float DeltaTime = 1.0f / 30.0f;
 const float SendRate = 1.0f / 30.0f;
 const float TimeOut = 10.0f;
@@ -114,12 +117,13 @@ private:
 	float penalty_reduction_accumulator;
 };
 
-// ----------------------------------------------
+// flow chart defination remains unchanged 
 
 int main(int argc, char* argv[])
 {
 	// parse command line
 
+	
 	enum Mode
 	{
 		Client,
@@ -129,11 +133,18 @@ int main(int argc, char* argv[])
 	Mode mode = Server;
 	Address address;
 
+	/* adding the additional commandline argument here agrv >=3
+	* 
+	* - for the client file path can send via this arguments for sending metadata 
+	* - and for the server the loaction of file to saved for receiving metadat 
+	* - having a default file name for receving the data 
+	* - mode setup in this remain unchanges as it is in argv 2 
+	*
+	*/
 	if (argc >= 2)
 	{
 		int a, b, c, d;
-		#pragma warning(suppress : 4996)
-		if (sscanf(argv[1], "%d.%d.%d.%d", &a, &b, &c, &d))
+		if (sscanf_s(argv[1], "%d.%d.%d.%d", &a, &b, &c, &d))
 		{
 			mode = Client;
 			address = Address(a, b, c, d, ServerPort);
@@ -203,37 +214,121 @@ int main(int argc, char* argv[])
 
 		sendAccumulator += DeltaTime;
 
-		static int counter = 1;
-
 		while (sendAccumulator > 1.0f / sendRate)
 		{
 			unsigned char packet[PacketSize];
 			memset(packet, 0, sizeof(packet));
-
-
-			sprintf_s((char*)packet, sizeof(packet), "Hello World <<%d>>\n", counter);
-			
 			connection.SendPacket(packet, sizeof(packet));
-			counter++;
 			sendAccumulator -= 1.0f / sendRate;
 		}
 
-		while (true)
-		{
+
+			/*
+    {
+        //  
+        // 2. Client tasks
+        //  
+        if (mode == Client && connection.IsConnected())
+        {
+            // a) Retrieving the file from disk
+            // Open the specified file, read its contents, and store in memory
+            // Use std::ifstream to read the file in binary mode
+            // Example:
+            // std::ifstream file(filePath, std::ios::binary);
+
+            // b) Sending file metadata
+            // Send information such as file name and size to the server
+            // Create a metadata structure and serialize it into a packet
+            // Example structure:
+            // struct FileMetadata { char fileName[256]; unsigned int fileSize; };
+
+            // c) Breaking the file into pieces to send
+            // Split the file into chunks of `PacketSize` and prepare to send each chunk
+
+            // d) Sending the pieces
+            // Use `connection.SendPacket()` to send each chunk to the server
+            // Example:
+            // connection.SendPacket(dataChunk, chunkSize);
+        }
+		 
+        // 3. Server tasks
+        //  
+        if (mode == Server && connection.IsConnected())
+        {
+            // a) Receiving the file metadata
+            // Receive and parse the metadata to determine the file size and name
+            // Example:
+            // FileMetadata metadata;
+            // connection.ReceivePacket((unsigned char*)&metadata, sizeof(metadata));
+
+            // b) Receiving the file pieces
+            // Accumulate received file chunks into a buffer
+
+            // c) Writing the pieces out to disk
+            // Save the reassembled file to the specified file path or default location
+            // Use std::ofstream in binary mode
+
+            // d) Verifying the file integrity
+            // Compare the received file's size or hash with the metadata to ensure no corruption
+        }
+
+        // Existing flow control and packet processing remains unchanged
+			*/
+
+			
+		if (mode == Server && connection.IsConnected()) {
+			Packet receivedPacket;
+			int bytesRead = connection.ReceivePacket(reinterpret_cast<unsigned char*>(&receivedPacket), sizeof(receivedPacket));
+
+			if (bytesRead > 0 && receivedPacket.packetId == ProtocolId) {
+				double startTime = Performance::getCurrentTime();  // Start time when file starts arriving
+
+				std::ofstream outFile("received_file", std::ios::binary);
+				outFile.write(receivedPacket.data, receivedPacket.dataSize);
+				outFile.close();
+
+				double endTime = Performance::getCurrentTime();  // End time after file has been received
+
+				unsigned int crcReceived = FileTransfer::calculateCRC(receivedPacket.data, receivedPacket.dataSize);
+				printf("File Received: %d bytes, CRC: %u\n", receivedPacket.dataSize, crcReceived);
+
+				// Measure transfer speed
+				Performance::measureTransferSpeed(receivedPacket.dataSize, startTime, endTime);
+			}
+		}
+
+
+		if (mode == Server && connection.IsConnected()) {
+			Packet receivedPacket;
+			int bytesRead = connection.ReceivePacket(reinterpret_cast<unsigned char*>(&receivedPacket), sizeof(receivedPacket));
+
+			if (bytesRead > 0 && receivedPacket.packetId == ProtocolId) {
+				double startTime = Performance::getCurrentTime();  // Start time when file starts arriving
+
+				std::ofstream outFile("received_file", std::ios::binary);
+				outFile.write(receivedPacket.data, receivedPacket.dataSize);
+				outFile.close();
+
+				double endTime = Performance::getCurrentTime();  // End time after file has been received
+
+				unsigned int crcReceived = FileTransfer::calculateCRC(receivedPacket.data, receivedPacket.dataSize);
+				printf("File Received: %d bytes, CRC: %u\n", receivedPacket.dataSize, crcReceived);
+
+				// Measure transfer speed
+				Performance::measureTransferSpeed(receivedPacket.dataSize, startTime, endTime);
+			}
+		}
+
+
+			
+
+
+		/* {
 			unsigned char packet[256];
-			/*
-			In the process of receiving the data, and information. Reading byte by byte, the program
-			should start writing all those datas in the default disk to move the data to some place.
-			*/
 			int bytes_read = connection.ReceivePacket(packet, sizeof(packet));
-			/*
-			Immediately the content of the packets is fully written in the disk, that content must be checked.
-			Comparing using another Sample file if all information received is the right to use
-			*/
 			if (bytes_read == 0)
 				break;
-			printf("%s\n", packet);
-		}
+		}*/
 
 		// show packets that were acked this frame
 
