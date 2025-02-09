@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
 		{
 			/*Creating a string variable to receive the filename from the user*/
 			string fileName;
-			printf("Enter the filename that you want to request to the server: ");
+			FileTransfer::requestFilenameClient();
 
 			/*Using the getline function I will get immediately the input*/
 			getline(cin, fileName);
@@ -254,9 +254,7 @@ int main(int argc, char* argv[])
 
 				net::wait(DeltaTime);
 			}
-
 			// show packets that were acked this frame
-
 		}
 
 		if (mode == Server)
@@ -292,14 +290,7 @@ int main(int argc, char* argv[])
 
 				requestedFile = filePathStored + requestedFile;
 
-				char* buffer = nullptr;
-				size_t fileSize = 0;
-
-				if (FileTransfer::readFile(requestedFile.c_str(), buffer, fileSize))
-				{
-					printf("File %s read successfully, size: %zu bytes\n", requestedFile.c_str(), fileSize);
-
-				}
+				FileTransfer::sendFile(requestedFile.c_str());
 			}
 
 			net::wait(DeltaTime);
