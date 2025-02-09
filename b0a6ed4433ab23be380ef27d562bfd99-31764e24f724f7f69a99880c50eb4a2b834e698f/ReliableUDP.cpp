@@ -11,6 +11,8 @@
 
 #include "Net.h"
 #include "file_Transfer.h"
+#include "protocol.h"
+#include "performance.h"
 #pragma warning(disable: 4996) // required by Visual Studio
 
 //#define SHOW_ACKS
