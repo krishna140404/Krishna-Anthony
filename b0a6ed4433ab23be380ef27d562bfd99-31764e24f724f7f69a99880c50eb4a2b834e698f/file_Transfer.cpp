@@ -66,3 +66,19 @@ void FileTransfer::sendFile(const char* filename) {
 
     delete[] fileBuffer;
 }
+
+/*FUNCTION NAME: requestFilenameClient
+*
+* parameter : void
+*
+* return : none
+*/
+void FileTransfer::requestFilenameClient(void)
+{
+    system("cls");
+    printf("*=========================================================*\n");
+    printf("                    REQUESTING FILE TRANSFER               \n");
+    printf("*=========================================================*\n");
+    printf("Enter the filename that you want to request to the server: \n");
+    printf(">>> ");
+}
